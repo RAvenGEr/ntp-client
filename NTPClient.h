@@ -16,20 +16,21 @@
 
 #include "mbed.h"
 
-#define NTP_DEFULT_NIST_SERVER_ADDRESS "2.pool.ntp.org"
-#define NTP_DEFULT_NIST_SERVER_PORT 123
+#define NTP_DEFAULT_NIST_SERVER_ADDRESS "2.pool.ntp.org"
+#define NTP_DEFAULT_NIST_SERVER_PORT 123
 
-class NTPClient {
-    public:
-        explicit NTPClient(NetworkInterface *interface = NULL);
-        void set_server(const char* server, int port);
-        time_t get_timestamp(int timeout = 15000);
-        void network(NetworkInterface *interface);
+class NTPClient
+{
+public:
+    explicit NTPClient(NetworkInterface* interface = NULL) : iface(interface) {}
+    void set_server(const char* server, int port);
+    nsapi_error_t get_timestamp(time_t& time, int timeout = 15000);
+    void set_network(NetworkInterface* interface) { iface = interface; }
 
-    private:
-        NetworkInterface *iface;
-        const char* nist_server_address;
-        int nist_server_port;
+private:
+    NetworkInterface* iface;
+    const char* nist_server_address{NTP_DEFAULT_NIST_SERVER_ADDRESS};
+    int nist_server_port{NTP_DEFAULT_NIST_SERVER_PORT};
 
-        uint32_t ntohl(uint32_t num);
+    uint32_t ntohl(uint32_t num);
 };

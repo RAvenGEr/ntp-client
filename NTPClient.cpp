@@ -18,71 +18,61 @@
 
 #include <mbed.h>
 
-NTPClient::NTPClient(NetworkInterface *interface)
-    : iface(interface), nist_server_address(NTP_DEFULT_NIST_SERVER_ADDRESS), nist_server_port(NTP_DEFULT_NIST_SERVER_PORT) {
-}
-
-void NTPClient::set_server(const char* server, int port) {
+void NTPClient::set_server(const char* server, int port)
+{
     nist_server_address = server;
     nist_server_port = port;
 }
 
-time_t NTPClient::get_timestamp(int timeout) {
+nsapi_error_t NTPClient::get_timestamp(time_t& time, int timeout)
+{
     const time_t TIME1970 = (time_t)2208988800UL;
     int ntp_send_values[12] = {0};
     int ntp_recv_values[12] = {0};
 
     SocketAddress nist;
 
-    if (iface) {
-        int ret_gethostbyname = iface->gethostbyname(nist_server_address, &nist);
-
-        if (ret_gethostbyname < 0) {
-            // Network error on DNS lookup
-            return ret_gethostbyname;
-        }
-
-        nist.set_port(nist_server_port);
-
-        memset(ntp_send_values, 0x00, sizeof(ntp_send_values));
-        ntp_send_values[0] = '\x1b';
-
-        memset(ntp_recv_values, 0x00, sizeof(ntp_recv_values));
-
-        UDPSocket sock;
-        sock.open(iface);
-        sock.set_timeout(timeout);
-
-        sock.sendto(nist, (void*)ntp_send_values, sizeof(ntp_send_values));
-
-        SocketAddress source;
-        const int n = sock.recvfrom(&source, (void*)ntp_recv_values, sizeof(ntp_recv_values));
-
-        if (n > 10) {
-            return ntohl(ntp_recv_values[10]) - TIME1970;
-
-        } else {
-            if (n < 0) {
-                // Network error
-                return n;
-
-            } else {
-                // No or partial data returned
-                return -1;
-            }
-        }
-
-    } else {
+    if (!iface) {
         // No network interface
-        return -2;
+        return NSAPI_ERROR_NO_CONNECTION;
     }
+
+    nsapi_error_t ret_gethostbyname = iface->gethostbyname(nist_server_address, &nist);
+
+    if (ret_gethostbyname != NSAPI_ERROR_OK) {
+        // Network error on DNS lookup
+        return ret_gethostbyname;
+    }
+
+    nist.set_port(nist_server_port);
+
+    memset(ntp_send_values, 0x00, sizeof(ntp_send_values));
+    ntp_send_values[0] = '\x1b';
+
+    memset(ntp_recv_values, 0x00, sizeof(ntp_recv_values));
+
+    UDPSocket sock;
+    sock.open(iface);
+    sock.set_timeout(timeout);
+
+    sock.sendto(nist, (void*)ntp_send_values, sizeof(ntp_send_values));
+
+    SocketAddress source;
+    const int n = sock.recvfrom(&source, (void*)ntp_recv_values, sizeof(ntp_recv_values));
+    if (n < 0) {
+        // Network error
+        return n;
+    }
+    if (n > 10) {
+        time = ntohl(ntp_recv_values[10]) - TIME1970;
+        return NSAPI_ERROR_OK;
+    }
+    // No or partial data returned
+    return NSAPI_ERROR_CONNECTION_LOST;
 }
 
-void NTPClient::network(NetworkInterface *interface) {
-    iface = interface;
-}
-
-uint32_t NTPClient::ntohl(uint32_t x) {
+uint32_t NTPClient::ntohl(uint32_t x)
+{
     uint32_t ret = (x & 0xff) << 24;
     ret |= (x & 0xff00) << 8;
     ret |= (x & 0xff0000UL) >> 8;
