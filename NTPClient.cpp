@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-#include "ntp-client/NTPClient.h"
-#include "mbed.h"
+#include "NTPClient.h"
+
+#include <mbed.h>
 
 NTPClient::NTPClient(NetworkInterface *interface)
     : iface(interface), nist_server_address(NTP_DEFULT_NIST_SERVER_ADDRESS), nist_server_port(NTP_DEFULT_NIST_SERVER_PORT) {
